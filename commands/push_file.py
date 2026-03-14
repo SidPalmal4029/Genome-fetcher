@@ -2,10 +2,9 @@ from pathlib import Path
 
 from core.config import ConfigManager
 from core.transfer_manager import TransferManager
-from core.parallel_engine import parallel_transfer
 
 
-def run_push_folder(args):
+def run_push_file(args):
 
     config = ConfigManager(args.config)
 
@@ -17,22 +16,12 @@ def run_push_folder(args):
 
     manager = TransferManager(conn)
 
-    folder = Path(args.folder)
+    file_path = Path(args.file)
 
-    files = [x for x in folder.rglob("*") if x.is_file()]
+    remote = config.target + "/" + file_path.name
 
-    def transfer(f):
-
-        rel = f.relative_to(folder)
-
-        remote = config.target + "/" + str(rel)
-
-        manager.transfer_with_fallback(
-            str(f),
-            remote,
-            direction="push"
-        )
-
-    workers = args.workers or 8
-
-    parallel_transfer(files, transfer, workers)
+    manager.transfer_with_fallback(
+        str(file_path),
+        remote,
+        direction="push"
+    )
