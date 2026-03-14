@@ -1,56 +1,27 @@
 #!/usr/bin/env python3
 
 import argparse
-import sys
-
-from commands.push_file import run_push_file
-from commands.pull_file import run_pull_file
-from commands.push_folder import run_push_folder
-from commands.pull_folder import run_pull_folder
+from commands.transfer import run_transfer
 
 
 def main():
 
-    parser = argparse.ArgumentParser(
-        description="HPC Transfer Tool"
-    )
+    parser = argparse.ArgumentParser()
 
     sub = parser.add_subparsers(dest="command")
 
-    push_file = sub.add_parser("push-file")
-    push_file.add_argument("--file", required=True)
-    push_file.add_argument("--config", required=True)
+    transfer = sub.add_parser("transfer")
 
-    pull_file = sub.add_parser("pull-file")
-    pull_file.add_argument("--file", required=True)
-    pull_file.add_argument("--config", required=True)
-
-    push_folder = sub.add_parser("push-folder")
-    push_folder.add_argument("--folder", required=True)
-    push_folder.add_argument("--config", required=True)
-    push_folder.add_argument("--workers", type=int)
-
-    pull_folder = sub.add_parser("pull-folder")
-    pull_folder.add_argument("--folder", required=True)
-    pull_folder.add_argument("--config", required=True)
+    transfer.add_argument("mode", choices=["send", "fetch"])
+    transfer.add_argument("src")
+    transfer.add_argument("dst")
+    transfer.add_argument("--config", default="config.json")
 
     args = parser.parse_args()
 
-    if args.command == "push-file":
-        run_push_file(args)
+    if args.command == "transfer":
 
-    elif args.command == "pull-file":
-        run_pull_file(args)
-
-    elif args.command == "push-folder":
-        run_push_folder(args)
-
-    elif args.command == "pull-folder":
-        run_pull_folder(args)
-
-    else:
-        parser.print_help()
-        sys.exit(1)
+        run_transfer(args)
 
 
 if __name__ == "__main__":
