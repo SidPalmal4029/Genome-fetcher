@@ -15,13 +15,11 @@ def run_push_file(args):
     }
 
     manager = TransferManager(conn)
-
-    file_path = Path(args.file)
-
-    remote = config.target + "/" + file_path.name
+    local_folder = args.folder
+    remote_folder = config.target
 
     manager.transfer_with_fallback(
-        str(file_path),
-        remote,
+        local_folder,
+        remote_folder,
         direction="push"
     )
