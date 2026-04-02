@@ -47,3 +47,6 @@ The accession text ( file in any of the following formats .txt, .tsv, .csv, .xls
 GCF_XXXXXXXXX.X
 GCF_XXXXXXXXT.T
 GCF_AVXXXXXXXX.v
+
+# Author
+This program has been developed by Siddhakam Palmal at CSIR IMTECH, independently.
