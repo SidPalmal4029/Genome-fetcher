@@ -25,7 +25,7 @@ activate-global-python-argcomplete
 # Usage
 The script can be launched as follows: 
 
-python3 Genome_fetcher.py   -i <path_to_list_of_Acession_no>   -o < path_to_output_directory>   -j <unique_job_name>   -t <threads> 
+python3 Genome_fetcher.py   -i <path_to_list_of_Acession_no>   -o < path_to_output_directory>   -j <unique_job_name>   -t <threads_to_be_used>
 
 Argument	Description
 -i, --input	Input file containing GCF accession IDs
