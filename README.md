@@ -48,4 +48,4 @@ GCF_XXXXXXXXT.T
 GCF_AVXXXXXXXX.v
 
 # Author
-This program has been developed by Siddhakam Palmal at CSIR IMTECH, independently.
+This program has been developed independently by Siddhakam Palmal at CSIR IMTECH.
