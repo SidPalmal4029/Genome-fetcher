@@ -9,27 +9,20 @@ import argparse
 import subprocess
 import zipfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
 import argcomplete
 from argcomplete.completers import FilesCompleter
 from tqdm import tqdm
 
-# -----------------------------
 # CONFIG
-# -----------------------------
 BATCH_SIZE = 10
 VALID_EXT = (".fa", ".fna", ".fasta")
 MAX_SAFE_THREADS = 10
 
-# -----------------------------
-# UI
-# -----------------------------
+#UI
 def stage(i, total, msg):
     print(f"\n[{i}/{total}] {msg}...")
 
-# -----------------------------
 # ARGUMENTS
-# -----------------------------
 def parse_args():
     parser = argparse.ArgumentParser(
         description="NCBI Genome Fetcher (clean, robust, standalone)"
@@ -46,10 +39,7 @@ def parse_args():
 
     argcomplete.autocomplete(parser)
     return parser.parse_args()
-
-# -----------------------------
 # INPUT PARSING
-# -----------------------------
 def parse_accessions(path):
     ext = path.lower()
 
@@ -69,16 +59,14 @@ def parse_accessions(path):
     else:
         sys.exit("Unsupported input format")
 
-    acc = sorted(set(re.findall(r"GCF_\d+\.\d+", text)))
+    acc = sorted(set(re.findall(r"GC[AF]_\d+\.\d+", text)))
 
     if not acc:
-        sys.exit("No valid GCF accessions found")
+        sys.exit("No valid GCF / GCA  accessions found")
 
     return acc
 
-# -----------------------------
 # DIRECTORIES
-# -----------------------------
 def resolve_outdir(path):
     if os.path.exists(path) and os.access(path, os.W_OK):
         return path
@@ -95,9 +83,7 @@ def create_job_dir(base, job):
     os.makedirs(job_dir, exist_ok=True)
     return job_dir
 
-# -----------------------------
 # BATCHING
-# -----------------------------
 def chunk(lst, size):
     for i in range(0, len(lst), size):
         yield lst[i:i+size]
@@ -112,9 +98,7 @@ def create_batches(acc, batch_dir):
         files.append(f)
     return files
 
-# -----------------------------
 # DOWNLOAD
-# -----------------------------
 def download_batch(batch_file, outdir):
     name = os.path.basename(batch_file).replace(".txt", "")
     bdir = os.path.join(outdir, name)
@@ -151,9 +135,7 @@ def parallel_download(batch_files, outdir, workers):
 
     return ok
 
-# -----------------------------
 # UNZIP
-# -----------------------------
 def unzip_batch(batch_dir):
     for f in os.listdir(batch_dir):
         if f.endswith(".zip"):
@@ -162,9 +144,7 @@ def unzip_batch(batch_dir):
                 z.extractall(batch_dir)
             os.remove(path)
 
-# -----------------------------
 # REHYDRATE
-# -----------------------------
 def rehydrate(batch_dir, attempts=3):
     workers = 3
 
@@ -193,7 +173,7 @@ def parallel_rehydrate(dirs, threads):
 
     # Control total concurrency
     batch_workers = max(1, min(threads // 3, 3))   # 1–3 batches
-    inner_workers = 3                              # per batch
+    #inner_workers = 3                              # per batch
 
     failed = []
 
@@ -215,10 +195,7 @@ def parallel_rehydrate(dirs, threads):
 
     return failed
 
-
-# -----------------------------
 # FASTA
-# -----------------------------
 def discover_fasta(root):
     files = []
     for r, _, fs in os.walk(root):
@@ -252,11 +229,9 @@ def collect_fasta(files, dest):
 
     return out
 
-# -----------------------------
 # METADATA
-# -----------------------------
 def extract_acc(name):
-    m = re.search(r"(GCF_\d+\.\d+)", name)
+    m = re.search(r"(GC[AF]_\d+\.\d+)", name)
     return m.group(1) if m else None
 
 def load_metadata(root):
@@ -279,21 +254,24 @@ def load_metadata(root):
                             pass
     return meta
 
-# -----------------------------
 # GUIDE + RENAME
-# -----------------------------
 def generate_guide(files, meta, guide_path):
     with open(guide_path, "w") as out:
         for f in files:
             acc = extract_acc(f)
             if not acc:
-                continue
+                os.path.splitext(os.path.basename(f))[0]
 
-            org = meta.get(acc, "")
+            org = meta.get(acc)
+
             if org:
                 parts = org.split()
-                name = f"{parts[0]}_{parts[1]}_{acc}" if len(parts) >= 2 else f"{parts[0]}_{acc}"
+                if len(parts) >= 2:
+                    name = f"{parts[0]}_{parts[1]}_{acc}"
+                else:
+                    name = f"{parts[0]}_{acc}"
             else:
+                # fallback (important for GCA)
                 name = acc
 
             out.write(f"{name}\t{acc}\n")
@@ -330,12 +308,17 @@ def run_renamer(src_dir, dest_dir, guide):
 
         shutil.move(src, dest)
 
-# -----------------------------
+
 # VALIDATION
-# -----------------------------
-def report_missing(accessions, meta, jobdir):
+def report_missing(accessions, fasta_files, jobdir):
     expected = set(accessions)
-    observed = set(meta.keys())
+
+    observed = set()
+    for f in fasta_files:
+        acc = extract_acc(f)
+        if acc:
+            observed.add(acc)
+
     missing = expected - observed
 
     print(f"   Validation: {len(observed)}/{len(expected)} recovered")
@@ -345,16 +328,16 @@ def report_missing(accessions, meta, jobdir):
         with open(path, "w") as f:
             for m in sorted(missing):
                 f.write(m + "\n")
-        print(f"   Missing: {len(missing)} (see missing_accessions.txt)")
+        print(f"   Missing: {len(missing)}")
 
     return missing
 
-# -----------------------------
+
 # MAIN
-# -----------------------------
 def main():
     args = parse_args()
-
+    args.input = os.path.abspath(args.input)
+    args.outdir = os.path.abspath(args.outdir)
     threads = max(1, min(args.threads, MAX_SAFE_THREADS))
     outdir = resolve_outdir(args.outdir)
     jobdir = create_job_dir(outdir, args.job)
@@ -376,7 +359,7 @@ def main():
         print(f"   Failed batches: {len(failed)}")
 
     if not has_fasta("downloads"):
-        sys.exit(" !!! No genomes recovered")
+        sys.exit("❌ No genomes recovered")
 
     stage(5,7,"Collecting FASTA")
     fasta = discover_fasta("downloads")
